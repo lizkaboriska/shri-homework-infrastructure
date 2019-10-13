@@ -17,6 +17,8 @@ router.get("/", function(req, res, next) {
 
 let cmd_number = 0;
 let cmds = [];
+let agents = [];
+
 router.post("/printLog", function(req, res, next) {
   cmd_number++;
 
@@ -49,10 +51,14 @@ router.post("/printLog", function(req, res, next) {
   res.json({});
 });
 
-router.get("/build/:number", function(req, res, next) {
-  let result = cmds.filter(cmd => {
-    return cmd.numb === parseInt(req.params.number);
+function getCommand(number) {
+  return cmds.filter(cmd => {
+    return cmd.numb === number;
   })[0];
+}
+
+router.get("/build/:number", function(req, res, next) {
+  let result = getCommand(parseInt(req.params.number));
   console.log(result.name);
   let output_lines = result.stdout.split("\n");
   res.render("build", {
@@ -65,5 +71,46 @@ router.get("/build/:number", function(req, res, next) {
     stdout: output_lines
   });
 });
+
+/* Register agent */
+router.post("/notify_agent", function(req, res, _) {
+    const {host, port} = req.body;
+
+    // TODO: introduce UUIDs
+
+    if (host == null || port == null) {
+        console.log("Bad request: %s", JSON.stringify(req.body));
+        res.status(400).end();
+        return;
+    }
+
+    agents.push({
+        host: host,
+        port: port,
+        num_running: 0,
+    });
+
+    res.status(200).end();
+});
+
+/* Get build result */
+router.post("/notify_build_result", function(req, res, _) {
+    const {build_number, status, stdout, stderr} = req.body;
+
+    if (typeof build_number !== 'number' || status == null || stdout == null || stderr == null) {
+        console.log("Bad request: %s", JSON.stringify(req.body));
+        res.status(400).end();
+        return;
+    }
+
+    let cmd = getCommand(build_number);
+
+    cmd.status = status;
+    cmd.stdout = stdout;
+    cmd.stderr = stderr;
+
+    res.status(200).end();
+});
+
 
 module.exports = router;
