@@ -1,0 +1,30 @@
+doctype html
+html
+  head
+    title= title
+    link(rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous")
+    link(rel='stylesheet', href='/stylesheets/style.css')
+    script. 
+      var execMyCommand = function() {
+        let cmd_value = document.getElementById('cmd_input').value
+        let sha_value = document.getElementById('sha_input').value
+        if (cmd_value === "") {
+          alert("Введите команду");
+          return;
+        }
+        if (sha_value === "") {
+          alert("Введите хэш");
+          return;
+        }
+        fetch('http://localhost:3000/printLog', {
+          method: 'post',
+          body: JSON.stringify({command: cmd_value, sha: sha_value}),
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }).then(function(response) {
+          return JSON.stringify(response.json());
+        })
+      }
+  body
+    block content

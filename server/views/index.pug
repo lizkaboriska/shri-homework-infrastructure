@@ -1,0 +1,27 @@
+extends layout
+
+block content
+  h1= title      
+  div(class="input-group mt-3 mb-3")
+      input(id=`sha_input` placeholder=`Insert commit hash` type="text" class="form-control" aria-label="" aria-describedby="basic-addon1")
+      input(id=`cmd_input` placeholder=`Insert command` type="text" class="form-control" aria-label="" aria-describedby="basic-addon1")
+      div(class="input-group-append")
+            button(onclick='execMyCommand()' class="btn btn-outline-primary" type="button") SUBMIT
+  
+
+  div
+      for command in commands
+            
+            - var state = command.state
+            if  state === "RUNNING"
+                  h5 #{command.name} 
+                        span(class="badge badge-secondary") #{command.state}
+                        a(class="text-secondary ml-2" href='/build/' + command.numb) build #{command.numb}
+            else if  state === "SUCCESS"
+                  h5 #{command.name} 
+                        span(class="badge badge-success") #{command.state}
+                        a(class="text-secondary ml-2" href='/build/' + command.numb) build #{command.numb} 
+            else if  state === "FAILED"
+                  h5 #{command.name} 
+                        span(class="badge badge-danger") #{command.state}
+                        a(class="text-secondary ml-2" href='/build/' + command.numb) build #{command.numb}
