@@ -65,7 +65,7 @@ app.post('/build', (req, res) => {
 
     const {build_number, repository_url, sha, name} = req.body;
 
-    exec(`set -x && mkdir -p build/${build_number} && cd build/${build_number} && git clone ${repository_url} && cd nginx-tests && git checkout ${sha} && ${name}`,
+    exec(`mkdir build; rm -rf build/${build_number}; mkdir build/${build_number}; cd build/${build_number} && git clone ${repository_url} && cd nginx-tests && git checkout ${sha} && ${name}`,
         (err, stdout, stderr) => {
             const build_result = {
                 build_number: build_number,
