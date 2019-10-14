@@ -12,16 +12,16 @@ block content
   div
       for command in commands
             
-            - var state = command.state
-            if  state === "RUNNING"
+            - var status = command.status
+            if  status === "RUNNING"
                   h5 #{command.name} 
-                        span(class="badge badge-secondary") #{command.state}
+                        span(class="badge badge-secondary") #{command.status}
                         a(class="text-secondary ml-2" href='/build/' + command.numb) build #{command.numb}
-            else if  state === "SUCCESS"
+            else if  status === "SUCCESS"
                   h5 #{command.name} 
-                        span(class="badge badge-success") #{command.state}
+                        span(class="badge badge-success") #{command.status}
                         a(class="text-secondary ml-2" href='/build/' + command.numb) build #{command.numb} 
-            else if  state === "FAILED"
+            else if  status === "FAILED"
                   h5 #{command.name} 
-                        span(class="badge badge-danger") #{command.state}
+                        span(class="badge badge-danger") #{command.status}
                         a(class="text-secondary ml-2" href='/build/' + command.numb) build #{command.numb}

@@ -1,7 +1,11 @@
 const express = require("express");
+const http = require("http");
 const router = express.Router();
 const bodyParser = require("body-parser");
 const { exec } = require("child_process");
+const config = require("config");
+
+const REPOSITORY_URL = config.get("repository_url");
 
 router.use(
   bodyParser.urlencoded({
@@ -19,6 +23,49 @@ let cmd_number = 0;
 let cmds = [];
 let agents = [];
 
+function sendRequestToAgent(agent_id, path, json, message_after_sent) {
+    const payload = JSON.stringify(json);
+
+    const options = {
+        hostname: agents[agent_id].host,
+        port: agents[agent_id].port,
+        path: path,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payload)
+        }
+    };
+
+    const req = http.request(options, (res) => {
+        console.log(`STATUS: ${res.statusCode}`);
+
+        res.setEncoding('utf8');
+        res.on('data', (chunk) => {});
+        res.on('end', () => {
+            console.log(message_after_sent);
+        });
+    });
+
+    req.on('error', (e) => {
+        console.error(`problem with request: ${e.message}`);
+    });
+
+    // Write data to request body
+    req.write(payload);
+    req.end();
+}
+
+let last_used_agent = -1;
+
+function chooseBestAvailableAgent() {
+    last_used_agent++;
+    if (last_used_agent >= agents.length) {
+        last_used_agent = 0;
+    }
+    return last_used_agent;
+}
+
 router.post("/printLog", function(req, res, next) {
   cmd_number++;
 
@@ -30,24 +77,21 @@ router.post("/printLog", function(req, res, next) {
     finish: "N/A",
     name: req.body.command,
     sha: req.body.sha,
-    state: "RUNNING",
+    status: "RUNNING",
     numb: cmd_number
   };
 
   cmds.push(cmd);
-  exec(
-    `set -x && mkdir -p build/${cmd.numb} && cd build/${cmd.numb} && git clone https://github.com/nginx/nginx-tests && cd nginx-tests && git checkout ${cmd.sha} && ${cmd.name}`,
-    (err, stdout, stderr) => {
-      cmd.finish = new Date().toLocaleString();
-      cmd.stdout = stdout;
+  
+  const agent_id = chooseBestAvailableAgent();
 
-      if (err) {
-        cmd.state = "FAILED";
-        return;
-      }
-      cmd.state = "SUCCESS";
-    }
-  );
+  sendRequestToAgent(agent_id, "/build", {
+    build_number: cmd.numb,
+    sha: cmd.sha,
+    name: cmd.name,
+    repository_url: REPOSITORY_URL
+  }, "Build %d was sent to agent successfully.");
+
   res.json({});
 });
 
@@ -66,7 +110,7 @@ router.get("/build/:number", function(req, res, next) {
     sha: result.sha,
     start: result.start,
     finish: result.finish,
-    status: result.state,
+    status: result.status,
     cmd: result.name,
     stdout: output_lines
   });
@@ -75,8 +119,6 @@ router.get("/build/:number", function(req, res, next) {
 /* Register agent */
 router.post("/notify_agent", function(req, res, _) {
     const {host, port} = req.body;
-
-    // TODO: introduce UUIDs
 
     if (host == null || port == null) {
         console.log("Bad request: %s", JSON.stringify(req.body));
@@ -108,6 +150,7 @@ router.post("/notify_build_result", function(req, res, _) {
     cmd.status = status;
     cmd.stdout = stdout;
     cmd.stderr = stderr;
+    cmd.finish = new Date().toLocaleString();
 
     res.status(200).end();
 });
