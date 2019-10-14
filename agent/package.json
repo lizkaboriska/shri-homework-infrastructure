@@ -9,6 +9,7 @@
   "author": "Elizaveta Borisova",
   "license": "ISC",
   "dependencies": {
+    "config": "^3.2.3",
     "express": "^4.17.1"
   }
 }

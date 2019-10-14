@@ -1,24 +1,29 @@
 const express = require('express')
 const app = express()
-const port = 3000
+const config = require('config');
 
 const http = require('http');
+const { exec } = require("child_process");
+const bodyParser = require("body-parser");
 
-// TODO: move to config
-const HARDCODED_MY_PORT = 3001;
-const HARDCODED_SERVER_HOST = 'localhost';
-const HARDCODED_SERVER_PORT = '3000';
+app.use(
+  bodyParser.urlencoded({
+    extended: false
+  })
+);
+app.use(bodyParser.json());
 
-function registerOurselfs() {
-    const payload = JSON.stringify({
-        host: "localhost",
-        port: HARDCODED_MY_PORT,
-    });
+const MY_PORT = config.get("port") || 3002;
+const SERVER_HOST = config.get("server_host") || 'localhost';
+const SERVER_PORT = config.get("server_port") || '3000';
+
+function sendRequestToServer(path, json, message_after_sent) {
+    const payload = JSON.stringify(json);
 
     const options = {
-        hostname: HARDCODED_SERVER_HOST,
-        port: HARDCODED_SERVER_PORT,
-        path: '/notify_agent',
+        hostname: SERVER_HOST,
+        port: SERVER_PORT,
+        path: path,
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -33,7 +38,7 @@ function registerOurselfs() {
         res.on('data', (chunk) => {
         });
         res.on('end', () => {
-            console.log('Successfully registered ourselfs in Server.');
+            console.log(message_after_sent);
         });
     });
 
@@ -46,8 +51,35 @@ function registerOurselfs() {
     req.end();
 }
 
+function registerOurselfs() {
+    sendRequestToServer("/notify_agent", {
+        host: "localhost",
+        port: MY_PORT,
+    }, 'Successfully registered ourselfs in Server.');
+}
+
 registerOurselfs();
 
-app.post('/', (req, res) => res.send('Hello World!'))
+app.post('/build', (req, res) => {
+    console.log("request body is: %s", JSON.stringify(req.body));
 
-app.listen(HARDCODED_MY_PORT, () => console.log(`Agent listening on port ${HARDCODED_MY_PORT}!`))
+    const {build_number, repository_url, sha, name} = req.body;
+
+    exec(`set -x && mkdir -p build/${build_number} && cd build/${build_number} && git clone ${repository_url} && cd nginx-tests && git checkout ${sha} && ${name}`,
+        (err, stdout, stderr) => {
+            const build_result = {
+                build_number: build_number,
+                status: err == null ? "SUCCESS" : "FAILED",
+                stderr: stderr,
+                stdout: stdout,
+            };
+            sendRequestToServer("/notify_build_result", build_result, "Server was notified of build result.");
+        }
+    );
+
+    res.send('Hello World!')
+})
+
+app.listen(MY_PORT, () =>
+    console.log(`Agent listening on port ${MY_PORT}!`)
+)
